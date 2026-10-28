@@ -48,18 +48,33 @@ def escape_filename(filename: str) -> str:
     return replace_placeholders(filename, replacement_dict)
 
 
-def replace_info_placeholders(text: str, info: SongInfo, lyric_langs: list) -> str:
+def replace_info_placeholders( text: str, info: SongInfo, lyric_langs: list) -> str:
     """替换路径中的歌曲信息占位符"""
+    # === 新增代码：动态获取界面当前格式后缀 ===
+    from LDDC.common.data.config import config
+    from LDDC.common.models import LyricsFormat, get_enum
+    fmt = get_enum(LyricsFormat, config.get("lyrics_format", 0))
+    fmt_map = {
+        LyricsFormat.VERBATIMLRC: "_逐字",
+        LyricsFormat.LINEBYLINELRC: "_逐行",
+        LyricsFormat.ENHANCEDLRC: "_增强型",
+        LyricsFormat.SRT: "_SRT",
+        LyricsFormat.ASS: "_ASS"
+    }
+    sfx = fmt_map.get(fmt, "")
+    # =======================================
+
     if not info.id and "%<id>" in text:
         text = text.replace("(%<id>)", "").replace("（%<id>）", "")
     mapping_table = {
-        "%<title>": escape_filename(info.title or "?"),
+        "%<title>": escape_filename(info.title or "?") + sfx, # 在歌名后加后缀
         "%<artist>": escape_filename(info.str_artist or "?"),
         "%<id>": escape_filename(info.id or "?"),
         "%<album>": escape_filename(info.album or "?"),
         "%<langs>": escape_filename("-".join(lyric_langs)),
     }
     return replace_placeholders(text, mapping_table)
+
 
 
 def get_save_path(folder: Path, file_name_format: str, info: SongInfo, lyric_langs: list) -> tuple[Path, str]:
