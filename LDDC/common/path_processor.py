@@ -48,12 +48,20 @@ def escape_filename(filename: str) -> str:
     return replace_placeholders(filename, replacement_dict)
 
 
-def replace_info_placeholders( text: str, info: SongInfo, lyric_langs: list) -> str:
+def replace_info_placeholders(text: str, info: SongInfo, lyric_langs: list) -> str:
     """替换路径中的歌曲信息占位符"""
-    # === 新增代码：动态获取界面当前格式后缀 ===
+    # === 修改代码：直接使用 Python 原生方式获取枚举 ===
     from LDDC.common.data.config import config
-    from LDDC.common.models import LyricsFormat, get_enum
-    fmt = get_enum(LyricsFormat, config.get("lyrics_format", 0))
+    from LDDC.common.models import LyricsFormat  # 直接从这里导入，__init__.py 里已经暴露了
+    
+    fmt_value = config.get("lyrics_format", 0)
+    try:
+        # 直接通过数值获取枚举对象
+        fmt = LyricsFormat(fmt_value)
+    except ValueError:
+        # 如果配置里的数值不在枚举范围内，给个默认值（比如逐行）
+        fmt = LyricsFormat.LINEBYLINELRC 
+    
     fmt_map = {
         LyricsFormat.VERBATIMLRC: "_逐字",
         LyricsFormat.LINEBYLINELRC: "_逐行",
