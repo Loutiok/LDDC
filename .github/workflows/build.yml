@@ -1,13 +1,13 @@
 name: build LDDC
 
 on:
-    push:
-        branches: 
-          - main
-          - dev
-        paths:
-            - "**.py"
-            - ".github/workflows/build.yml"
+#    push:
+#        branches: 
+#          - main
+#          - dev
+#        paths:
+#            - "**.py"
+#            - ".github/workflows/build.yml"
     workflow_dispatch:
         
 
