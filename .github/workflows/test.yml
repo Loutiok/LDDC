@@ -1,13 +1,13 @@
 name: test LDDC
 
 on:
-    push:
-        branches: 
-          - main
-          - dev
-        paths:
-            - "**.py"
-            - ".github/workflows/test.yml"
+#    push:
+#        branches: 
+#          - main
+#          - dev
+#        paths:
+#            - "**.py"
+#            - ".github/workflows/test.yml"
     workflow_dispatch:
 
 jobs:
