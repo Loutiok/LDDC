@@ -48,34 +48,28 @@ def escape_filename(filename: str) -> str:
     return replace_placeholders(filename, replacement_dict)
 
 
-def replace_info_placeholders(text: str, info: SongInfo, lyric_langs: list) -> str:
+# === 修改点 1：增加 lyrics_format 参数 ===
+def replace_info_placeholders(text: str, info: SongInfo, lyric_langs: list, lyrics_format: LyricsFormat | None = None) -> str:
     """替换路径中的歌曲信息占位符"""
-    # === 修改代码：直接使用 Python 原生方式获取枚举 ===
-    from LDDC.common.data.config import config
-    from LDDC.common.models import LyricsFormat  # 直接从这里导入，__init__.py 里已经暴露了
     
-    fmt_value = config.get("lyrics_format", 0)
-    try:
-        # 直接通过数值获取枚举对象
-        fmt = LyricsFormat(fmt_value)
-    except ValueError:
-        # 如果配置里的数值不在枚举范围内，给个默认值（比如逐行）
-        fmt = LyricsFormat.LINEBYLINELRC 
-    
-    fmt_map = {
-        LyricsFormat.VERBATIMLRC: "_逐字",
-        LyricsFormat.LINEBYLINELRC: "_逐行",
-        LyricsFormat.ENHANCEDLRC: "_增强型",
-        LyricsFormat.SRT: "_SRT",
-        LyricsFormat.ASS: "_ASS"
-    }
-    sfx = fmt_map.get(fmt, "")
-    # =======================================
+    # === 新增：根据传入的格式生成后缀 ===
+    sfx = ""
+    if lyrics_format is not None:
+        fmt_map = {
+            LyricsFormat.VERBATIMLRC: "_逐字",
+            LyricsFormat.LINEBYLINELRC: "_逐行",
+            LyricsFormat.ENHANCEDLRC: "_增强型",
+            LyricsFormat.SRT: "_SRT",
+            LyricsFormat.ASS: "_ASS"
+        }
+        sfx = fmt_map.get(lyrics_format, "")
+    # =================================
 
     if not info.id and "%<id>" in text:
         text = text.replace("(%<id>)", "").replace("（%<id>）", "")
     mapping_table = {
-        "%<title>": escape_filename(info.title or "?") + sfx, # 在歌名后加后缀
+        # === 修改点 2：在 title 后面拼上后缀 sfx ===
+        "%<title>": escape_filename(info.title or "?") + sfx,
         "%<artist>": escape_filename(info.str_artist or "?"),
         "%<id>": escape_filename(info.id or "?"),
         "%<album>": escape_filename(info.album or "?"),
@@ -84,8 +78,8 @@ def replace_info_placeholders(text: str, info: SongInfo, lyric_langs: list) -> s
     return replace_placeholders(text, mapping_table)
 
 
-
 def get_save_path(folder: Path, file_name_format: str, info: SongInfo, lyric_langs: list) -> tuple[Path, str]:
+    # 这里保持原样不传格式，防止报错，因为单曲保存可能走的是别的逻辑
     folder = Path(escape_path(replace_info_placeholders(str(folder), info, lyric_langs)).strip())
     file_name = escape_filename(replace_info_placeholders(file_name_format, info, lyric_langs))
     return folder, file_name
@@ -103,19 +97,8 @@ def get_local_match_save_path(
     allow_placeholder: bool = False,
     song_root_path: Path | None = None,
 ) -> Path | int:
-    """获取本地匹配歌词保存路径
+    """获取本地匹配歌词保存路径"""
 
-    :param save_mode: 保存模式
-    :param file_name_mode: 文件名模式
-    :param song_info: 歌曲信息
-    :param lyrics_format: 歌词格式
-    :param file_name_format: 文件名格式
-    :param langs: 歌词语言
-    :param save_root_path: 保存根目录
-    :param lrc_info: 歌词信息
-    :return: 保存路径 -1: 保存根目录为空 -2: 歌词信息为空
-    :rtype: str | int
-    """
     if not local_info.path:
         msg = "没有本地歌曲路径"
         raise ValueError(msg)
@@ -126,7 +109,6 @@ def get_local_match_save_path(
             if song_root_path is None:
                 return -3
             save_folder = save_root_path / Path(os.path.relpath(local_info.path, song_root_path)).parent
-            # save_folder = save_root_path / local_info.path.relative_to(song_root_path).parent  慢三倍
         case SaveMode.SONG:
             save_folder = local_info.path.parent
 
@@ -147,7 +129,8 @@ def get_local_match_save_path(
                     else:
                         return -2
                 else:
-                    save_filename = escape_filename(replace_info_placeholders(file_name_format, local_info, langs)) + ext
+                    # === 修改点 3：传入 lyrics_format ===
+                    save_filename = escape_filename(replace_info_placeholders(file_name_format, local_info, langs, lyrics_format)) + ext
             else:
                 save_filename = local_info.path.stem + ext
 
@@ -158,12 +141,14 @@ def get_local_match_save_path(
                 else:
                     return -2
             else:
-                save_filename = escape_filename(replace_info_placeholders(file_name_format, cloud_info, langs)) + ext
+                # === 修改点 4：传入 lyrics_format ===
+                save_filename = escape_filename(replace_info_placeholders(file_name_format, cloud_info, langs, lyrics_format)) + ext
 
         case FileNameMode.FORMAT_BY_SONG:
             if local_info.from_cue is False and not local_info.title:
                 save_filename = local_info.path.stem + ext
             else:
-                save_filename = escape_filename(replace_info_placeholders(file_name_format, local_info, langs)) + ext
+                # === 修改点 5：传入 lyrics_format ===
+                save_filename = escape_filename(replace_info_placeholders(file_name_format, local_info, langs, lyrics_format)) + ext
 
     return save_folder / save_filename
